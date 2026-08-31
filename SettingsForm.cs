@@ -148,7 +148,7 @@ public class SettingsForm : Form
         _statusLabel = new Label
         {
             Left = forceBtn.Right + 15, Top = y + 5, Width = ClientSize.Width - margin - (forceBtn.Right + 15),
-            Text = "", AutoSize = false, Height = 28, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            Text = "", AutoSize = false, Height = 38, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
         Controls.Add(_statusLabel);
         y += Math.Max(saveBtn.Height, Math.Max(checkNowBtn.Height, forceBtn.Height)) + rowGap * 2;
