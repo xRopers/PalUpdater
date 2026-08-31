@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <AssemblyName>PalUpdater</AssemblyName>
+    <RootNamespace>PalUpdater</RootNamespace>
+    <!-- Single-file, self-contained exe when published -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+    <!-- Memory footprint tuning for a small background tray app -->
+    <!-- Skips loading full ICU globalization data (~several MB); fine since we don't do
+         culture-specific formatting anywhere in this app. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Workstation, non-concurrent GC: smaller heap and no background GC thread.
+         Server GC is tuned for throughput on multi-core server workloads, not a small
+         idle tray app - it reserves more memory than we need here. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <!-- Trims some framework debug/diagnostic resource strings out of the published output. -->
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <!-- HttpClient's distributed-tracing plumbing isn't used here (no APM/tracing backend). -->
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+  </PropertyGroup>
+
+</Project>
