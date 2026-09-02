@@ -91,19 +91,6 @@ public class TrayAppContext : ApplicationContext
                 return;
             }
 
-            if (!force && release.TagName == _config.LastInstalledTag && FilesActuallyInstalled())
-            {
-                Logger.Log($"Already up to date ({release.TagName}).");
-                if (manual) MessageBox.Show($"Already up to date: {release.TagName}", "PalUpdater");
-                return;
-            }
-
-            if (!force && release.TagName == _config.LastInstalledTag && !FilesActuallyInstalled())
-            {
-                Logger.Log($"Config says {release.TagName} is installed, but the UE4SS files are missing from " +
-                           $"{_config.ResolvedInstallPath} - reinstalling.");
-            }
-
             var asset = UpdateChecker.PickAsset(release);
             if (asset == null)
             {
@@ -111,7 +98,27 @@ public class TrayAppContext : ApplicationContext
                 return;
             }
 
-            Logger.Log($"New version available: {release.TagName} (currently: {(_config.LastInstalledTag == "" ? "none" : _config.LastInstalledTag)})");
+            // Compare by asset filename, not just the release tag. Rolling releases (e.g. UE4SS's
+            // "experimental-latest") reuse the same tag name forever while swapping out the actual
+            // file each build - the filename is what actually changes (it embeds a commit hash), so
+            // that's the real "is this a new build" signal. Tag name alone would report "up to date"
+            // forever after the first install from a rolling release, even as new builds ship.
+            var sameAsLastInstalled = asset.Name == _config.LastInstalledAssetName;
+
+            if (!force && sameAsLastInstalled && FilesActuallyInstalled())
+            {
+                Logger.Log($"Already up to date ({asset.Name}).");
+                if (manual) MessageBox.Show($"Already up to date: {asset.Name}", "PalUpdater");
+                return;
+            }
+
+            if (!force && sameAsLastInstalled && !FilesActuallyInstalled())
+            {
+                Logger.Log($"Config says {asset.Name} is installed, but the UE4SS files are missing from " +
+                           $"{_config.ResolvedInstallPath} - reinstalling.");
+            }
+
+            Logger.Log($"New version available: {asset.Name} (currently: {(_config.LastInstalledAssetName == "" ? "none" : _config.LastInstalledAssetName)})");
 
             var gameRunning = IsGameRunning();
 
@@ -187,6 +194,7 @@ public class TrayAppContext : ApplicationContext
             try { File.Delete(tempZip); } catch { /* ignore */ }
 
             _config.LastInstalledTag = release.TagName;
+            _config.LastInstalledAssetName = asset.Name;
             _config.Save();
 
             Logger.Log($"Installed UE4SS {release.TagName} successfully.");

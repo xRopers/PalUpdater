@@ -23,7 +23,7 @@ public class SettingsForm : Form
 
         Text = "PalUpdater Settings";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
-        Width = 760;
+        Width = 880;
         Height = 760;
         StartPosition = FormStartPosition.CenterScreen;
         FormClosing += (_, _) => { }; // hitting X just hides to tray behavior handled by caller
@@ -41,7 +41,7 @@ public class SettingsForm : Form
         // instead of assuming 96 DPI, which is what caused clipped button text before.
         AutoScaleMode = AutoScaleMode.Font;
         Font = new Font("Segoe UI", 9F);
-        MinimumSize = new Size(760, 760);
+        MinimumSize = new Size(880, 760);
 
         const int margin = 15;
         const int fieldHeight = 28;
@@ -193,9 +193,9 @@ public class SettingsForm : Form
         _autoInstallBox.Checked = _config.AutoInstall;
         _prereleaseBox.Checked = _config.IncludePrerelease;
         _tokenBox.Text = _config.GitHubToken ?? "";
-        _statusLabel.Text = string.IsNullOrEmpty(_config.LastInstalledTag)
+        _statusLabel.Text = string.IsNullOrEmpty(_config.LastInstalledAssetName)
             ? "No UE4SS version installed yet."
-            : $"Currently installed: {_config.LastInstalledTag}";
+            : $"Currently installed: {_config.LastInstalledAssetName}";
     }
 
     private void BrowseForFolder()

@@ -10,8 +10,17 @@ public class AppConfig
     // How often to check for updates, in hours
     public int CheckIntervalHours { get; set; } = 6;
 
-    // Last UE4SS tag we successfully installed, e.g. "v3.0.1"
+    // Last UE4SS tag we successfully installed, e.g. "v3.0.1". Kept mainly for display purposes -
+    // NOT reliable on its own for "are we up to date" checks against rolling releases (see
+    // LastInstalledAssetName below for why).
     public string LastInstalledTag { get; set; } = "";
+
+    // The exact asset filename we last installed, e.g. "UE4SS_v3.0.1-1106-g3a2d2bc1.zip".
+    // This is the real "are we up to date" signal: rolling releases like "experimental-latest"
+    // keep the same tag name forever and just swap out their files, so comparing tag names alone
+    // would report "up to date" indefinitely after the first install even as new builds ship.
+    // The filename embeds a commit hash and changes with every build, so it doesn't have that problem.
+    public string LastInstalledAssetName { get; set; } = "";
 
     // If true, install updates automatically; if false, just notify and wait for manual "Install"
     public bool AutoInstall { get; set; } = false;
@@ -63,6 +72,7 @@ public class AppConfig
         GameRootPath = other.GameRootPath;
         CheckIntervalHours = other.CheckIntervalHours;
         LastInstalledTag = other.LastInstalledTag;
+        LastInstalledAssetName = other.LastInstalledAssetName;
         AutoInstall = other.AutoInstall;
         GitHubToken = other.GitHubToken;
         IncludePrerelease = other.IncludePrerelease;
