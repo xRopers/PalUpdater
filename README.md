@@ -121,6 +121,14 @@ See [Why open source](#why-open-source) above — this is a known false-positive
 unsigned .NET utilities that download and extract files, not an indication of anything malicious.
 The full source is here for anyone to check.
 
+**What does PalUpdater expect my existing UE4SS folder to look like?**
+The official UE4SS layout is flat, directly inside `Pal\Binaries\Win64`: `dwmapi.dll`,
+`UE4SS.dll`, `UE4SS-settings.ini`, and a `Mods\` folder all sitting right there, not nested inside
+any subfolder. That's what PalUpdater installs and what it knows how to back up and restore. If
+your existing setup is organized differently (e.g. from an older UE4SS version or a different
+install method), PalUpdater will warn you before its first install into that folder — read that
+warning carefully, since it can only preserve files at the standard location.
+
 **Does this work with the Steam Workshop version of UE4SS?**
 No — Steam Workshop subscriptions already auto-update on their own through Steam. PalUpdater is
 for the standard manual UE4SS install path (`Pal\Binaries\Win64`), for people who don't use or
@@ -205,8 +213,9 @@ single `HttpClient` shared for the app's lifetime instead of one allocated per c
 
 ## Contributing
 
-Issues and pull requests are welcome. If you're reporting a bug, include the relevant lines from
-the in-app log (Settings window → Log panel, or `%AppData%\PalUpdater\log.txt`).
+Issues and pull requests are welcome. When filing a bug report, the issue template will prompt for
+what's actually needed to diagnose it (how UE4SS was installed before, what the folder looked like,
+log output) — filling that out in full makes a fix much faster than a one-line description.
 
 ## Credits
 

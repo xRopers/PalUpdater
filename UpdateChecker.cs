@@ -9,9 +9,7 @@ public class UpdateChecker
     private const string Owner = "UE4SS-RE";
     private const string Repo = "RE-UE4SS";
 
-    // Shared across all checks for the app's lifetime. Creating a fresh HttpClient (and its
-    // underlying connection pool) on every 6-hour check and never disposing it was pure waste -
-    // one long-lived client is both lighter and the officially recommended pattern.
+    // Shared for the app's lifetime instead of a new HttpClient per check
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
@@ -24,14 +22,12 @@ public class UpdateChecker
 
     public UpdateChecker(string? gitHubToken)
     {
-        // The token can change between checks (user edits it in Settings), so refresh the
-        // auth header on the shared client each time rather than spinning up a new client.
+        // Token can change between checks, refresh the auth header on the shared client
         Http.DefaultRequestHeaders.Authorization = string.IsNullOrWhiteSpace(gitHubToken)
             ? null
             : new AuthenticationHeaderValue("Bearer", gitHubToken);
     }
 
-    // Returns the newest release (optionally including prereleases), or null on failure.
     public async Task<GitHubRelease?> GetLatestReleaseAsync(bool includePrerelease)
     {
         try
@@ -44,7 +40,7 @@ public class UpdateChecker
             }
             else
             {
-                // "latest" endpoint skips prereleases, so pull the list and take the first non-draft one
+                // /latest skips prereleases, so pull the list and take the newest
                 var url = $"https://api.github.com/repos/{Owner}/{Repo}/releases?per_page=5";
                 var json = await Http.GetStringAsync(url);
                 var releases = JsonSerializer.Deserialize<List<GitHubRelease>>(json);
@@ -58,14 +54,14 @@ public class UpdateChecker
         }
     }
 
-    // Picks the main UE4SS zip asset, skipping dev/experimental (zDEV-prefixed) and symbol/pdb bundles.
+    // Skips dev/experimental (zDEV-prefixed) and symbol/pdb bundles
     public static GitHubAsset? PickAsset(GitHubRelease release)
     {
         return release.Assets
             .Where(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             .Where(a => !a.Name.StartsWith("zDEV", StringComparison.OrdinalIgnoreCase))
             .Where(a => !a.Name.Contains("pdb", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(a => a.Size) // the full package is bigger than any partial/symbols-only zip
+            .OrderByDescending(a => a.Size)
             .FirstOrDefault();
     }
 
@@ -99,7 +95,7 @@ public static class Logger
         }
         catch
         {
-            // logging must never crash the app
+            // never let logging crash the app
         }
     }
 }

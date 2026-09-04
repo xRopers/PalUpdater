@@ -4,25 +4,17 @@ namespace PalUpdater;
 
 public static class Installer
 {
-    // Files/folders that belong to the USER (mods they installed, their settings) rather than
-    // to the UE4SS core package itself. These get preserved across an update.
-    private static readonly string[] PreserveRelativePaths =
-    {
-        "Mods",                 // whole mods folder, including mods.txt
-        "UE4SS-settings.ini",
-    };
-
-    public static void Install(string zipPath, string installPath)
+    public static void Install(string zipPath, string installPath, IEnumerable<string> preservePaths)
     {
         Directory.CreateDirectory(installPath);
 
         var backupDir = Path.Combine(Path.GetTempPath(), "PalUpdater_backup_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(backupDir);
 
+        var preserveList = preservePaths.ToList();
         Exception? extractionError = null;
 
-        // 1. Back up anything user-owned that currently exists
-        foreach (var rel in PreserveRelativePaths)
+        foreach (var rel in preserveList)
         {
             var src = Path.Combine(installPath, rel);
             var dst = Path.Combine(backupDir, rel);
@@ -40,9 +32,6 @@ public static class Installer
             }
         }
 
-        // 2. Extract the new UE4SS build over the install folder.
-        // If this throws partway through, we still fall through to step 3 so the
-        // user's mods/config get restored rather than left missing.
         try
         {
             using var archive = ZipFile.OpenRead(zipPath);
@@ -63,10 +52,10 @@ public static class Installer
             Logger.Log($"Extraction failed partway through: {ex.Message}. Restoring your mods/config, but the core UE4SS files may be incomplete - re-run the update.");
         }
 
-        // 3. Restore the user's mods/config back on top, always
+        // Restore mods/config regardless of whether extraction succeeded
         try
         {
-            foreach (var rel in PreserveRelativePaths)
+            foreach (var rel in preserveList)
             {
                 var src = Path.Combine(backupDir, rel);
                 var dst = Path.Combine(installPath, rel);

@@ -4,33 +4,32 @@ namespace PalUpdater;
 
 public class AppConfig
 {
-    // Root folder of the Palworld install (the folder that contains "Pal\Binaries\Win64")
+    // Root of the Palworld install (contains "Pal\Binaries\Win64")
     public string GameRootPath { get; set; } = "";
 
-    // How often to check for updates, in hours
     public int CheckIntervalHours { get; set; } = 6;
 
-    // Last UE4SS tag we successfully installed, e.g. "v3.0.1". Kept mainly for display purposes -
-    // NOT reliable on its own for "are we up to date" checks against rolling releases (see
-    // LastInstalledAssetName below for why).
+    // Display only - not reliable for up-to-date checks on rolling releases, see LastInstalledAssetName
     public string LastInstalledTag { get; set; } = "";
 
-    // The exact asset filename we last installed, e.g. "UE4SS_v3.0.1-1106-g3a2d2bc1.zip".
-    // This is the real "are we up to date" signal: rolling releases like "experimental-latest"
-    // keep the same tag name forever and just swap out their files, so comparing tag names alone
-    // would report "up to date" indefinitely after the first install even as new builds ship.
-    // The filename embeds a commit hash and changes with every build, so it doesn't have that problem.
+    // Actual installed filename, e.g. "UE4SS_v3.0.1-1106-g3a2d2bc1.zip". Rolling releases like
+    // "experimental-latest" never change their tag, just the file, so this is the real version check.
     public string LastInstalledAssetName { get; set; } = "";
 
-    // If true, install updates automatically; if false, just notify and wait for manual "Install"
     public bool AutoInstall { get; set; } = false;
 
-    // Optional GitHub personal access token to raise the 60/hr unauthenticated rate limit.
-    // Only needed if you set very short check intervals. Stored locally only.
+    // GitHub PAT, only needed if check interval is short enough to hit the 60/hr unauthed limit
     public string? GitHubToken { get; set; }
 
-    // Include prerelease / dev builds when checking for "latest"
     public bool IncludePrerelease { get; set; } = false;
+
+    // Relative to Pal\Binaries\Win64. UE4SS now nests everything except dwmapi.dll under a
+    // "ue4ss" subfolder (dwmapi.dll itself never needs preserving, it's just the proxy loader).
+    public List<string> PreservePaths { get; set; } = new()
+    {
+        Path.Combine("ue4ss", "Mods"),
+        Path.Combine("ue4ss", "UE4SS-settings.ini"),
+    };
 
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PalUpdater");
@@ -47,12 +46,16 @@ public class AppConfig
             {
                 var json = File.ReadAllText(ConfigPath);
                 var cfg = JsonSerializer.Deserialize<AppConfig>(json);
-                if (cfg != null) return cfg;
+                if (cfg != null)
+                {
+                    MigrateOldPreservePaths(cfg);
+                    return cfg;
+                }
             }
         }
         catch
         {
-            // fall through to defaults if the config is corrupt
+            // corrupt config, fall back to defaults
         }
         return new AppConfig();
     }
@@ -64,9 +67,30 @@ public class AppConfig
         File.WriteAllText(ConfigPath, json);
     }
 
-    // Copies values from another instance into this one in place, preserving object identity.
-    // Used to refresh from disk without breaking references shared with other windows/classes
-    // (e.g. TrayAppContext and an open SettingsForm both hold the same AppConfig instance).
+    // Configs saved before v1.1.0 stored "Mods" and "UE4SS-settings.ini" relative to Win64 root.
+    // UE4SS moved those under a "ue4ss" subfolder, so upgrade any exact matches on load - leaves
+    // anything the user customized untouched.
+    private static void MigrateOldPreservePaths(AppConfig cfg)
+    {
+        var changed = false;
+        for (var i = 0; i < cfg.PreservePaths.Count; i++)
+        {
+            if (cfg.PreservePaths[i] == "Mods")
+            {
+                cfg.PreservePaths[i] = Path.Combine("ue4ss", "Mods");
+                changed = true;
+            }
+            else if (cfg.PreservePaths[i] == "UE4SS-settings.ini")
+            {
+                cfg.PreservePaths[i] = Path.Combine("ue4ss", "UE4SS-settings.ini");
+                changed = true;
+            }
+        }
+        if (changed) cfg.Save();
+    }
+
+    // Updates fields in place instead of reassigning, so TrayAppContext and an open SettingsForm
+    // (both holding this same instance) stay in sync
     public void CopyFrom(AppConfig other)
     {
         GameRootPath = other.GameRootPath;
@@ -76,9 +100,9 @@ public class AppConfig
         AutoInstall = other.AutoInstall;
         GitHubToken = other.GitHubToken;
         IncludePrerelease = other.IncludePrerelease;
+        PreservePaths = other.PreservePaths;
     }
 
-    // Resolves the actual folder UE4SS files get dropped into
     public string ResolvedInstallPath =>
         string.IsNullOrWhiteSpace(GameRootPath) ? "" : Path.Combine(GameRootPath, "Pal", "Binaries", "Win64");
 }

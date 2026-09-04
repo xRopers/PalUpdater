@@ -5,7 +5,7 @@ namespace PalUpdater;
 
 public static class SteamLocator
 {
-    // Returns the Palworld root folder (contains "Pal" subfolder) or null if not found.
+    // Returns the Palworld root folder ("Pal" subfolder), or null if not found
     public static string? TryFindPalworld()
     {
         var steamPath = GetSteamInstallPath();

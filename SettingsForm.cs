@@ -37,8 +37,7 @@ public class SettingsForm : Form
 
     private void BuildUi()
     {
-        // AutoScale on the actual font so control sizing tracks the user's DPI/text-scale setting
-        // instead of assuming 96 DPI, which is what caused clipped button text before.
+        // Scale to actual font/DPI instead of assuming 96 DPI
         AutoScaleMode = AutoScaleMode.Font;
         Font = new Font("Segoe UI", 9F);
         MinimumSize = new Size(880, 760);
@@ -83,7 +82,14 @@ public class SettingsForm : Form
         detectBtn.Top = y;
         detectBtn.Click += (_, _) => AutoDetect();
         Controls.Add(detectBtn);
-        y += detectBtn.Height + rowGap * 2;
+
+        var preserveBtn = MakeButton("Choose files to preserve...");
+        preserveBtn.Top = y;
+        preserveBtn.Left = detectBtn.Right + 10;
+        preserveBtn.Click += (_, _) => OpenPreserveFilesPicker();
+        Controls.Add(preserveBtn);
+
+        y += Math.Max(detectBtn.Height, preserveBtn.Height) + rowGap * 2;
 
         var intervalLabel = MakeLabel("Check every (hours):", 160);
         intervalLabel.AutoSize = true;
@@ -216,6 +222,24 @@ public class SettingsForm : Form
         else
         {
             MessageBox.Show("Couldn't auto-detect Palworld through Steam. Please browse for it manually.", "PalUpdater");
+        }
+    }
+
+    private void OpenPreserveFilesPicker()
+    {
+        var installPath = _config.ResolvedInstallPath;
+        if (string.IsNullOrWhiteSpace(installPath) || !Directory.Exists(installPath))
+        {
+            MessageBox.Show("Set a valid Palworld install folder first.", "PalUpdater");
+            return;
+        }
+
+        using var picker = new PreserveFilesForm(installPath, _config.PreservePaths);
+        if (picker.ShowDialog(this) == DialogResult.OK && picker.Result != null)
+        {
+            _config.PreservePaths = picker.Result;
+            _config.Save();
+            Logger.Log($"Files to preserve set to: {string.Join(", ", _config.PreservePaths)}");
         }
     }
 

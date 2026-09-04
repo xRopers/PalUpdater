@@ -1,6 +1,7 @@
 using System.Windows.Forms;
 using System.Drawing;
 using System.Diagnostics;
+using System.Linq;
 using PalUpdater.Models;
 
 namespace PalUpdater;
@@ -39,8 +40,7 @@ public class TrayAppContext : ApplicationContext
 
         Logger.Log("PalUpdater started.");
 
-        // Always show the window on launch so it's obvious the app actually started -
-        // launching straight to a silent tray icon was confusing with no feedback.
+        // Show the window on launch so it's clear the app started
         ShowSettings();
 
         if (!string.IsNullOrWhiteSpace(_config.GameRootPath))
@@ -98,11 +98,8 @@ public class TrayAppContext : ApplicationContext
                 return;
             }
 
-            // Compare by asset filename, not just the release tag. Rolling releases (e.g. UE4SS's
-            // "experimental-latest") reuse the same tag name forever while swapping out the actual
-            // file each build - the filename is what actually changes (it embeds a commit hash), so
-            // that's the real "is this a new build" signal. Tag name alone would report "up to date"
-            // forever after the first install from a rolling release, even as new builds ship.
+            // Compare by filename, not tag - rolling releases like "experimental-latest" keep the
+            // same tag forever and just swap the file, but the filename embeds a commit hash
             var sameAsLastInstalled = asset.Name == _config.LastInstalledAssetName;
 
             if (!force && sameAsLastInstalled && FilesActuallyInstalled())
@@ -126,9 +123,7 @@ public class TrayAppContext : ApplicationContext
             {
                 if (gameRunning)
                 {
-                    // The DLL is likely locked by the running process - overwriting it now would
-                    // probably fail partway through. Defer and let the next scheduled check retry
-                    // once the game has closed, instead of risking a half-applied update.
+                    // DLL is likely locked while the game's running - defer to the next check
                     Logger.Log($"{release.TagName} is available, but Palworld is currently running - " +
                                "deferring install until the game is closed.");
                 }
@@ -139,8 +134,7 @@ public class TrayAppContext : ApplicationContext
             }
             else if (manual)
             {
-                // A manual "Check Now" click deserves a clear, hard-to-miss result -
-                // not a balloon tip that can auto-dismiss or get suppressed by Windows.
+                // Manual check gets a clear result, not an easy-to-miss balloon tip
                 var promptText = $"UE4SS {release.TagName} is available (asset: {asset.Name}).\n\nInstall it now?";
                 if (gameRunning)
                 {
@@ -182,6 +176,22 @@ public class TrayAppContext : ApplicationContext
 
     private async Task DownloadAndInstallAsync(UpdateChecker checker, GitHubRelease release, GitHubAsset asset)
     {
+        if (IsFirstInstallIntoUnfamiliarFolder())
+        {
+            using var picker = new PreserveFilesForm(_config.ResolvedInstallPath, _config.PreservePaths);
+            var result = picker.ShowDialog();
+
+            if (result != DialogResult.OK)
+            {
+                Logger.Log("Install cancelled by user at the preserve-files prompt.");
+                return;
+            }
+
+            _config.PreservePaths = picker.Result ?? _config.PreservePaths;
+            _config.Save();
+            Logger.Log($"Files to preserve set to: {string.Join(", ", _config.PreservePaths)}");
+        }
+
         try
         {
             var tempZip = Path.Combine(Path.GetTempPath(), asset.Name);
@@ -189,7 +199,7 @@ public class TrayAppContext : ApplicationContext
             await checker.DownloadAssetAsync(asset, tempZip);
 
             Logger.Log($"Installing to {_config.ResolvedInstallPath}...");
-            Installer.Install(tempZip, _config.ResolvedInstallPath);
+            Installer.Install(tempZip, _config.ResolvedInstallPath, _config.PreservePaths);
 
             try { File.Delete(tempZip); } catch { /* ignore */ }
 
@@ -208,8 +218,7 @@ public class TrayAppContext : ApplicationContext
                     $"Installed {release.TagName}, but Palworld is currently running. Restart the game for the update to take effect.";
                 _trayIcon.ShowBalloonTip(15000);
 
-                // A balloon tip alone is easy to miss (auto-dismisses, can be suppressed by Windows
-                // notification settings), so also surface a dialog the user has to acknowledge.
+                // Balloon tips are easy to miss, so also show a dialog
                 MessageBox.Show(
                     $"UE4SS {release.TagName} was installed, but Palworld is currently running.\n\n" +
                     "The update won't take effect until you restart the game.",
@@ -233,16 +242,24 @@ public class TrayAppContext : ApplicationContext
         }
     }
 
-    // Palworld's actual game process is Palworld-Win64-Shipping.exe; the Steam launcher stub can
-    // show up briefly as Palworld.exe too, so check both to be safe.
+    // True if PalUpdater has no record of installing here before, but the folder already has
+    // content - i.e. an existing manual/other-tool UE4SS setup we don't know the layout of
+    private bool IsFirstInstallIntoUnfamiliarFolder()
+    {
+        if (!string.IsNullOrEmpty(_config.LastInstalledAssetName)) return false;
+        if (!Directory.Exists(_config.ResolvedInstallPath)) return false;
+        return Directory.EnumerateFileSystemEntries(_config.ResolvedInstallPath).Any();
+    }
+
+    // Steam launcher stub can briefly show up as Palworld.exe too, so check both
     private static bool IsGameRunning()
     {
         return Process.GetProcessesByName("Palworld-Win64-Shipping").Length > 0
                || Process.GetProcessesByName("Palworld").Length > 0;
     }
 
-    // UE4SS drops this DLL directly into Pal/Binaries/Win64 - its presence is a reliable
-    // signal that an install actually exists there, independent of what config.json claims.
+    // dwmapi.dll is UE4SS's loader - its presence means an install actually exists,
+    // regardless of what config.json claims
     private bool FilesActuallyInstalled()
     {
         if (string.IsNullOrWhiteSpace(_config.ResolvedInstallPath)) return false;
