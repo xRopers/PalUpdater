@@ -21,6 +21,7 @@ UE4SS Lua mods and `UE4SS-settings.ini` across every update.
 - [Features](#features)
 - [Why open source](#why-open-source)
 - [Install](#install)
+- [Code signing](#code-signing)
 - [First run](#first-run)
 - [How it works](#how-it-works)
 - [FAQ](#faq)
@@ -73,7 +74,7 @@ project.
 If your antivirus or a hosting site flags the compiled `.exe`, that's a known false-positive
 pattern for small, unsigned, first-seen .NET utilities that do this kind of file operation — not a
 sign that anything is actually wrong. Build it yourself from source here if you'd rather not trust
-a prebuilt binary at all.
+a prebuilt binary at all. See [Code signing](#code-signing) for the actual fix in progress.
 
 ## Install
 
@@ -81,6 +82,21 @@ a prebuilt binary at all.
    — see [Building from source](#building-from-source)).
 2. Put it anywhere on your PC. No installer, no admin rights needed.
 3. Run it.
+
+## Code signing
+
+Code signing for this project is provided for free by [SignPath Foundation](https://signpath.io/)
+(**status: pending approval** — releases are currently unsigned).
+
+Unsigned executables that download and extract files, like PalUpdater does, are a known trigger
+for antivirus and platform false positives — not because anything is wrong, but because it's hard
+to distinguish "legitimate updater" from "dropper" by behavior alone without a verified publisher
+identity. Code signing is the actual fix for that, which is why this project applied for it rather
+than just asking for one-off exceptions on each release. Once signing is active, this section will
+be updated with the certificate details and verification steps.
+
+Until then: verify what you're running by checking this against the actual source in this repo,
+not by trusting the binary blindly — see [Why open source](#why-open-source) below.
 
 ## First run
 
@@ -225,5 +241,3 @@ log output) — filling that out in full makes a fix much faster than a one-line
 ## License
 
 [MIT](LICENSE) — free to use, modify, and redistribute.
-
-Code signing for this project is provided by SignPath Foundation (pending approval)
