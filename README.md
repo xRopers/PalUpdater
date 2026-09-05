@@ -225,3 +225,5 @@ log output) — filling that out in full makes a fix much faster than a one-line
 ## License
 
 [MIT](LICENSE) — free to use, modify, and redistribute.
+
+Code signing for this project is provided by SignPath Foundation (pending approval)
